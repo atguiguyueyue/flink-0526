@@ -2,15 +2,13 @@ package com.atguigu.day03.transform;
 
 import com.atguigu.bean.WaterSensor;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.util.Collector;
 
-public class Flink06_TransForm_Max {
+public class Flink07_TransForm_Reduce {
     public static void main(String[] args) throws Exception {
         //1.获取流的执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -34,14 +32,16 @@ public class Flink06_TransForm_Max {
         KeyedStream<WaterSensor, String> keyedStream = waterSensorSingleOutputStreamOperator.keyBy(r -> r.getId());
 
         //5.max聚合操作，求vc的最大值
-        SingleOutputStreamOperator<WaterSensor> result = keyedStream.max("vc");
-        SingleOutputStreamOperator<WaterSensor> maxByResult = keyedStream.maxBy("vc", true);
-        SingleOutputStreamOperator<WaterSensor> maxByResult2 = keyedStream.maxBy("vc", false);
-
-//        result.print("max:");
-
-        maxByResult.print("true:");
-        maxByResult2.print("false:");
+        keyedStream.reduce(new ReduceFunction<WaterSensor>() {
+            //value1指的是计算出来的最大值
+            //value2指的是当前的数据
+            //reduce方法第一条数据，不进入此方法，后面的数据来一条调用一次
+            @Override
+            public WaterSensor reduce(WaterSensor value1, WaterSensor value2) throws Exception {
+                System.out.println("reduce.....");
+                return new WaterSensor(value1.getId(), value1.getTs(), Math.max(value1.getVc(), value2.getVc()));
+            }
+        }).print();
 
         env.execute();
     }

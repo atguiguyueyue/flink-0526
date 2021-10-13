@@ -37,6 +37,7 @@ public class Flink03_Source_Custom {
         public void run(SourceContext<WaterSensor> ctx) throws Exception {
             while (isRunning) {
                 ctx.collect(new WaterSensor("sensor"+random.nextInt(100), System.currentTimeMillis(), random.nextInt(1000)));
+
             }
 
         }

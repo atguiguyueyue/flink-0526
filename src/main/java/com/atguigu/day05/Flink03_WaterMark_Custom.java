@@ -90,7 +90,6 @@ public class Flink03_WaterMark_Custom {
 
             this.outOfOrdernessMillis = maxOutOfOrderness.toMillis();
 
-
             this.maxTimestamp = Long.MIN_VALUE + outOfOrdernessMillis + 1;
         }
 

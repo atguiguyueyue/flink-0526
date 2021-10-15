@@ -18,12 +18,12 @@ import org.apache.flink.util.Collector;
 
 import java.time.Duration;
 
-public class Flink02_WaterMark_ForBounded {
+public class Flink04_WaterMark_AllowedLateness {
     public static void main(String[] args) throws Exception {
         //1.获取流的执行环境
 //        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
-        env.setParallelism(2);
+        env.setParallelism(1);
 
         //2.从端口获取数据
         DataStreamSource<String> streamSource = env.socketTextStream("localhost", 9999);
@@ -35,7 +35,7 @@ public class Flink02_WaterMark_ForBounded {
                 String[] split = value.split(",");
                 return new WaterSensor(split[0], Long.parseLong(split[1]), Integer.parseInt(split[2]));
             }
-        }).setParallelism(1);
+        });
 
         //TODO 4.使用事件时间， 并指定WaterMark  设置乱序程度的WaterMark
         SingleOutputStreamOperator<WaterSensor> waterSensorSingleOutputStreamOperator1 = waterSensorSingleOutputStreamOperator.assignTimestampsAndWatermarks(WatermarkStrategy
@@ -52,7 +52,8 @@ public class Flink02_WaterMark_ForBounded {
 
 
         //开启一个窗口大小为5S的滚动窗口
-        WindowedStream<WaterSensor, String, TimeWindow> window = keyedStream.window(TumblingEventTimeWindows.of(Time.seconds(5)));
+        WindowedStream<WaterSensor, String, TimeWindow> window = keyedStream.window(TumblingEventTimeWindows.of(Time.seconds(5)))
+                .allowedLateness(Time.seconds(3));
 
         window.process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
             @Override

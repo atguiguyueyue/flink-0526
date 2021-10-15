@@ -15,15 +15,16 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.OutputTag;
 
 import java.time.Duration;
 
-public class Flink02_WaterMark_ForBounded {
+public class Flink05_WaterMark_OutPut {
     public static void main(String[] args) throws Exception {
         //1.获取流的执行环境
 //        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
-        env.setParallelism(2);
+        env.setParallelism(1);
 
         //2.从端口获取数据
         DataStreamSource<String> streamSource = env.socketTextStream("localhost", 9999);
@@ -35,7 +36,7 @@ public class Flink02_WaterMark_ForBounded {
                 String[] split = value.split(",");
                 return new WaterSensor(split[0], Long.parseLong(split[1]), Integer.parseInt(split[2]));
             }
-        }).setParallelism(1);
+        });
 
         //TODO 4.使用事件时间， 并指定WaterMark  设置乱序程度的WaterMark
         SingleOutputStreamOperator<WaterSensor> waterSensorSingleOutputStreamOperator1 = waterSensorSingleOutputStreamOperator.assignTimestampsAndWatermarks(WatermarkStrategy
@@ -52,9 +53,14 @@ public class Flink02_WaterMark_ForBounded {
 
 
         //开启一个窗口大小为5S的滚动窗口
-        WindowedStream<WaterSensor, String, TimeWindow> window = keyedStream.window(TumblingEventTimeWindows.of(Time.seconds(5)));
+        WindowedStream<WaterSensor, String, TimeWindow> window = keyedStream.window(TumblingEventTimeWindows.of(Time.seconds(5)))
+                //窗口允许迟到的时间
+                .allowedLateness(Time.seconds(3))
+                //侧输出流（将迟到的数据输出到侧输出流中）
+                .sideOutputLateData(new OutputTag<WaterSensor>("output"){})
+                ;
 
-        window.process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
+        SingleOutputStreamOperator<String> result = window.process(new ProcessWindowFunction<WaterSensor, String, String, TimeWindow>() {
             @Override
             public void process(String key, Context context, Iterable<WaterSensor> elements, Collector<String> out) throws Exception {
                 String msg = "当前key: " + key
@@ -62,8 +68,13 @@ public class Flink02_WaterMark_ForBounded {
                         + elements.spliterator().estimateSize() + "条数据 ";
                 out.collect(msg);
             }
-        })
-                .print();
+        });
+
+        result.print();
+
+        //打印侧输出流的数据
+        result.getSideOutput(new OutputTag<WaterSensor>("output"){}).print("迟到数据");
+
 
         env.execute();
 

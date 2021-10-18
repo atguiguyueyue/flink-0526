@@ -11,12 +11,13 @@ import org.apache.flink.cep.pattern.Pattern;
 import org.apache.flink.cep.pattern.conditions.IterativeCondition;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.time.Time;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-public class Flink07_CEP_Greedy {
+public class Flink10_CEP_Window {
     public static void main(String[] args) throws Exception {
         //1.流的执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -24,7 +25,7 @@ public class Flink07_CEP_Greedy {
         env.setParallelism(1);
 
         //2.从文件读取数据并转为JavaBean，以及指定WaterMark
-        SingleOutputStreamOperator<WaterSensor> waterSensorStream = env.readTextFile("input/sensor2.txt")
+        SingleOutputStreamOperator<WaterSensor> waterSensorStream = env.readTextFile("input/sensor3.txt")
                 .map(new MapFunction<String, WaterSensor>() {
                     @Override
                     public WaterSensor map(String value) throws Exception {
@@ -38,13 +39,14 @@ public class Flink07_CEP_Greedy {
                                     @Override
                                     public long extractTimestamp(WaterSensor element, long recordTimestamp) {
                                         return element.getTs() * 1000;
+//                                        return element.getTs();
                                     }
                                 })
                 );
 
         //TODO 3.定义模式
         Pattern<WaterSensor, WaterSensor> pattern =
-
+                //TODO 模式组
                 Pattern
                         .<WaterSensor>begin("start")
                         .where(new IterativeCondition<WaterSensor>() {
@@ -53,16 +55,17 @@ public class Flink07_CEP_Greedy {
                                 return "sensor_1".equals(value.getId());
                             }
                         })
-                        .times(2, 3)
-                        //贪婪模式
-//                        .greedy()
+//                        .followedBy()
                         .next("end")
                         .where(new IterativeCondition<WaterSensor>() {
                             @Override
                             public boolean filter(WaterSensor value, Context<WaterSensor> ctx) throws Exception {
-                                return value.getVc() == 30;
+                                return "sensor_2".equals(value.getId());
                             }
-                        });
+                        })
+                        //窗口长度
+                        .within(Time.seconds(2))
+                ;
 
         //TODO 4.将模式作用于流上
         PatternStream<WaterSensor> patternStream = CEP.pattern(waterSensorStream, pattern);

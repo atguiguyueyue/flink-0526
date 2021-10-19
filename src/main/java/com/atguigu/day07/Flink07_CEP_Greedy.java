@@ -60,7 +60,9 @@ public class Flink07_CEP_Greedy {
                         .where(new IterativeCondition<WaterSensor>() {
                             @Override
                             public boolean filter(WaterSensor value, Context<WaterSensor> ctx) throws Exception {
-                                return value.getVc() == 30;
+                                return "sensor_2".equals(value.getId());
+//                                return value.getVc() == 30;
+
                             }
                         });
 

@@ -15,7 +15,7 @@ public class Flink03_Stream_Unbounded_WordCount {
         //1.流的执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        env.setParallelism(1);
+        env.setParallelism(15);
 
         //2.读取无界数据
         DataStreamSource<String> streamSource = env.socketTextStream("hadoop102", 9999);

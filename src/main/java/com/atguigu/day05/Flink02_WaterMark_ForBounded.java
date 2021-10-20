@@ -35,7 +35,7 @@ public class Flink02_WaterMark_ForBounded {
                 String[] split = value.split(",");
                 return new WaterSensor(split[0], Long.parseLong(split[1]), Integer.parseInt(split[2]));
             }
-        }).setParallelism(1);
+        });
 
         //TODO 4.使用事件时间， 并指定WaterMark  设置乱序程度的WaterMark
         SingleOutputStreamOperator<WaterSensor> waterSensorSingleOutputStreamOperator1 = waterSensorSingleOutputStreamOperator.assignTimestampsAndWatermarks(WatermarkStrategy
